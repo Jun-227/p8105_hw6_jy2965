@@ -153,5 +153,49 @@ weather_df %>%
 ```
 
 
+## drawing the plot
+```{r}
+r_df =
+  weather_df_clean %>% 
+  modelr::bootstrap(5000) %>% 
+  mutate(
+    models = map(strap, ~lm(tmax ~ tmin , data = .x)),
+    results = map(models, broom::glance)) %>% 
+  unnest(results)
 
+  r_df %>%   
+  ggplot(aes(x = r.squared)) + geom_density() + 
+  labs(
+    title = "Distribution of r.squared"
+  )
+
+  
+log_df =
+  weather_df_clean %>% 
+  modelr::bootstrap(5000) %>% 
+  mutate(
+    models = map(strap, ~lm(tmax ~ tmin , data = .x)),
+    results = map(models, broom::tidy)) %>% 
+  unnest(results) %>% 
+  select(.id, estimate, term) %>% 
+  pivot_wider(
+  names_from = "term",
+  values_from = "estimate"
+    ) %>% 
+  mutate(
+    log = log(`(Intercept)`*tmin)
+  ) 
+
+log_df %>% 
+    ggplot(aes(x = log)) + geom_density() +
+    labs(
+      title = "Distribution of log(intercept*beta1)"
+    )
+col1= quantile(log_df$log, probs = c(0.025, 0.975))
+col2=quantile(r_df$r.squared, probs = c(0.025, 0.975))
+results= data.frame(col1,col2)
+results
+```
+
+* Two plots mostly have normal distribution. The 95% CI for log(intercept*beta1) is `r quantile(log_df$log, probs = c(0.025, 0.975))`. The 95% CI for r.squared is `r quantile(r_df$r.squared, probs = c(0.025, 0.975))`. 
 
